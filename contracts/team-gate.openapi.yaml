@@ -5,6 +5,9 @@ info:
   description: |
     Contract cho dịch vụ kiểm soát ra/vào (Access Gate) trong hệ thống Smart Campus.
     Quản lý sự kiện quẹt thẻ, xác minh quyền truy cập, lưu lịch sử và tích hợp với Core Business.
+  contact:
+    name: team-gate
+    email: team-gate@smart-campus.local
 servers:
   - url: http://localhost:4012
     description: Prism mock server for Access Gate
@@ -26,6 +29,7 @@ paths:
       tags: [system]
       operationId: getHealth
       summary: Kiểm tra trạng thái service
+      description: Public health check dùng để kiểm tra mock/service đã sẵn sàng. Không cần auth.
       security: []
       responses:
         "200":
@@ -48,7 +52,8 @@ paths:
       summary: Ghi nhận sự kiện quẹt thẻ tại cổng
       description: |
         Nhận sự kiện từ đầu đọc thẻ (RFID/NFC). Service sẽ xác minh thẻ và ghi nhận allow/deny.
-        gate_id bắt buộc, card_id bắt buộc, direction bắt buộc.
+        card_id, gate_id, direction và timestamp đều bắt buộc.
+        Dùng Prefer: example=exit_event để Prism trả về example cho chiều exit.
       requestBody:
         required: true
         content:
@@ -56,13 +61,13 @@ paths:
             schema:
               $ref: "#/components/schemas/AccessEventCreate"
             examples:
-              valid_entry:
+              entry_event:
                 value:
                   card_id: CARD-001
                   gate_id: GATE-A1
                   direction: entry
                   timestamp: "2026-05-13T08:00:00+07:00"
-              valid_exit:
+              exit_event:
                 value:
                   card_id: CARD-002
                   gate_id: GATE-B1
@@ -76,7 +81,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/AccessEventCreated"
               examples:
-                allowed:
+                entry_event:
                   value:
                     event_id: EVT-20260513-0001
                     card_id: CARD-001
@@ -84,9 +89,17 @@ paths:
                     direction: entry
                     result: allow
                     timestamp: "2026-05-13T08:00:01+07:00"
-                denied:
+                exit_event:
                   value:
                     event_id: EVT-20260513-0002
+                    card_id: CARD-002
+                    gate_id: GATE-B1
+                    direction: exit
+                    result: allow
+                    timestamp: "2026-05-13T18:00:01+07:00"
+                denied_event:
+                  value:
+                    event_id: EVT-20260513-0003
                     card_id: CARD-999
                     gate_id: GATE-A1
                     direction: entry
@@ -94,7 +107,7 @@ paths:
                     reason: card_not_found
                     timestamp: "2026-05-13T08:00:02+07:00"
         "400":
-          description: Request không hợp lệ
+          description: Request không hợp lệ — thiếu field hoặc sai enum
           content:
             application/problem+json:
               schema:
@@ -122,7 +135,7 @@ paths:
                     detail: gate_id is required
                     instance: /access-events
         "401":
-          description: Thiếu hoặc sai token
+          description: Thiếu hoặc sai bearer token
           content:
             application/problem+json:
               schema:
@@ -154,7 +167,7 @@ paths:
       tags: [access-events]
       operationId: listAccessEvents
       summary: Lấy danh sách sự kiện ra/vào
-      description: Trả về danh sách sự kiện, có thể lọc theo gate_id, card_id và khoảng thời gian.
+      description: Trả về danh sách sự kiện có thể lọc theo gate_id, card_id, result và giới hạn số dòng.
       parameters:
         - in: query
           name: gate_id
@@ -186,7 +199,7 @@ paths:
           example: 10
       responses:
         "200":
-          description: Danh sách sự kiện
+          description: Danh sách sự kiện theo filter
           content:
             application/json:
               schema:
@@ -226,7 +239,7 @@ paths:
                     detail: limit must be between 1 and 100
                     instance: /access-events
         "401":
-          description: Thiếu hoặc sai token
+          description: Thiếu hoặc sai bearer token
           content:
             application/problem+json:
               schema:
@@ -245,6 +258,7 @@ paths:
       tags: [cards]
       operationId: createCard
       summary: Đăng ký thẻ truy cập mới
+      description: Tạo thẻ truy cập mới cho sinh viên, nhân viên hoặc khách. card_id phải là duy nhất trong hệ thống.
       requestBody:
         required: true
         content:
@@ -260,7 +274,7 @@ paths:
                   valid_until: "2027-12-31"
       responses:
         "201":
-          description: Thẻ được tạo thành công
+          description: Thẻ được tạo thành công với status active
           content:
             application/json:
               schema:
@@ -275,7 +289,7 @@ paths:
                     valid_until: "2027-12-31"
                     created_at: "2026-05-13T09:00:00+07:00"
         "400":
-          description: Dữ liệu không hợp lệ
+          description: Dữ liệu không hợp lệ — thiếu field hoặc sai enum role
           content:
             application/problem+json:
               schema:
@@ -295,8 +309,14 @@ paths:
                     status: 400
                     detail: role must be one of [student, staff, visitor, contractor]
                     instance: /cards
+        "401":
+          description: Thiếu hoặc sai bearer token
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
         "409":
-          description: card_id đã tồn tại
+          description: card_id đã tồn tại trong hệ thống
           content:
             application/problem+json:
               schema:
@@ -309,18 +329,13 @@ paths:
                     status: 409
                     detail: card_id CARD-010 already exists
                     instance: /cards
-        "401":
-          description: Thiếu hoặc sai token
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
 
   /cards/{card_id}:
     get:
       tags: [cards]
       operationId: getCard
       summary: Lấy thông tin một thẻ truy cập
+      description: Trả về thông tin chi tiết của thẻ theo card_id. Trả về 404 nếu thẻ không tồn tại.
       parameters:
         - in: path
           name: card_id
@@ -331,7 +346,7 @@ paths:
           example: CARD-001
       responses:
         "200":
-          description: Thông tin thẻ
+          description: Thông tin chi tiết của thẻ truy cập
           content:
             application/json:
               schema:
@@ -345,8 +360,14 @@ paths:
                     status: active
                     valid_until: "2027-06-30"
                     created_at: "2026-01-01T00:00:00+07:00"
+        "401":
+          description: Thiếu hoặc sai bearer token
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
         "404":
-          description: Thẻ không tồn tại
+          description: Thẻ không tồn tại trong hệ thống
           content:
             application/problem+json:
               schema:
@@ -359,12 +380,6 @@ paths:
                     status: 404
                     detail: Card CARD-999 not found
                     instance: /cards/CARD-999
-        "401":
-          description: Thiếu hoặc sai token
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
 
 components:
   securitySchemes:

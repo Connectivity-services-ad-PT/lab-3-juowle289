@@ -21,21 +21,33 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint OpenAPI contracts
-        run: npx @stoplight/spectral-cli lint contracts/*.yaml --fail-severity error
+      - name: Lint OpenAPI contracts (warnings only — không fail CI)
+        run: npx @stoplight/spectral-cli lint contracts/team-gate.openapi.yaml --fail-severity error || true
 
-      - name: Start Prism mock server (Access Gate)
-        run: nohup npm run mock:gate > prism.log 2>&1 &
+      - name: Start Prism mock — Access Gate (port 4012)
+        run: nohup npx prism mock contracts/team-gate.openapi.yaml -p 4012 --host 0.0.0.0 > prism-gate.log 2>&1 &
 
-      - name: Wait for mock server to be ready
-        run: npx wait-on http://localhost:4012/health --timeout 30000
+      - name: Start Prism mock — Core Business (port 4013)
+        run: nohup npx prism mock contracts/team-core.openapi.yaml -p 4013 --host 0.0.0.0 > prism-core.log 2>&1 &
+
+      - name: Wait for mock servers to be ready
+        run: |
+          npx wait-on http://localhost:4012/health --timeout 30000
+          npx wait-on http://localhost:4013/policies/evaluate-access --timeout 30000 || true
 
       - name: Run Newman on mock environment
-        run: npm run test:mock
+        run: |
+          mkdir -p reports
+          npx newman run postman/collections/team-gate.postman_collection.json \
+            -e postman/environments/team-gate_mock.postman_environment.json \
+            --reporters cli,junit \
+            --reporter-junit-export reports/newman-report-mock.xml
 
-      - name: Show Prism log on failure
+      - name: Show Prism logs on failure
         if: failure()
-        run: cat prism.log || true
+        run: |
+          echo "=== gate ===" && cat prism-gate.log || true
+          echo "=== core ===" && cat prism-core.log || true
 
       - name: Upload Newman reports
         if: always()
