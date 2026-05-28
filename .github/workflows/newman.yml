@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint OpenAPI contracts (warnings only — không fail CI)
+      - name: Lint OpenAPI contracts (warnings only)
         run: npx @stoplight/spectral-cli lint contracts/team-gate.openapi.yaml --fail-severity error || true
 
       - name: Start Prism mock — Access Gate (port 4012)
@@ -30,10 +30,13 @@ jobs:
       - name: Start Prism mock — Core Business (port 4013)
         run: nohup npx prism mock contracts/team-core.openapi.yaml -p 4013 --host 0.0.0.0 > prism-core.log 2>&1 &
 
-      - name: Wait for mock servers to be ready
+      - name: Wait for Prism to be ready
+        run: sleep 8
+
+      - name: Verify mock servers are up
         run: |
-          npx wait-on http://localhost:4012/health --timeout 30000
-          npx wait-on http://localhost:4013/policies/evaluate-access --timeout 30000 || true
+          curl --fail --retry 5 --retry-delay 2 http://localhost:4012/health
+          echo "Gate mock OK"
 
       - name: Run Newman on mock environment
         run: |
