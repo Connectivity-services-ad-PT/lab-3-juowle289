@@ -4,6 +4,10 @@
   "private": true,
   "description": "FIT4110 Lab 03 - Postman, Mock Server, Contract Testing, Newman CI",
   "scripts": {
+    "mock:gate": "prism mock contracts/team-gate.openapi.yaml -p 4012 --host 0.0.0.0",
+    "test:mock:gate": "newman run postman/collections/team-gate.postman_collection.json -e postman/environments/team-gate_mock.postman_environment.json --reporters cli,junit --reporter-junit-export reports/newman-report-mock.xml",
+    "test:html:gate": "newman run postman/collections/team-gate.postman_collection.json -e postman/environments/team-gate_mock.postman_environment.json --reporters cli,htmlextra --reporter-htmlextra-export reports/newman-report.html",
+
     "mock:iot": "prism mock contracts/iot-ingestion.openapi.yaml -p 4010 --host 0.0.0.0",
     "mock:vision": "prism mock contracts/ai-vision.openapi.yaml -p 4011 --host 0.0.0.0",
     "mock:all": "sh -c 'npm run mock:iot & npm run mock:vision & wait'",

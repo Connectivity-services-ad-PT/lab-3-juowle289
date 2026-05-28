@@ -3,31 +3,35 @@
 ## Thông tin chung
 
 - Lab: FIT4110 Lab 03
-- Ngày:
-- Provider team:
-- Consumer team:
-- Provider service:
-- Consumer service:
+- Ngày: 24/05/2026
+- Provider team: Core Business
+- Consumer team: Access Gate
+- Provider service: Core Business — Policy Evaluation
+- Consumer service: Access Gate — Kiểm soát ra/vào
 
 ## Contract
 
-- Contract file:
-- Mock base URL:
-- Auth method:
-- Endpoint được test:
+- Contract file: `contracts/team-gate.openapi.yaml`
+- Mock base URL: `http://localhost:4013` (Core Business mock)
+- Auth method: Bearer token (`Authorization: Bearer {{authToken}}`)
+- Endpoint được test: `POST /policies/evaluate-access`
 
 ## Smoke test
 
 ### Request
 
 ```http
-METHOD /path
-Authorization: Bearer <token>
+POST /policies/evaluate-access
+Authorization: Bearer lab-token
 Content-Type: application/json
 ```
 
 ```json
 {
+  "card_id": "CARD-001",
+  "gate_id": "GATE-A1",
+  "direction": "entry",
+  "role": "student"
 }
 ```
 
@@ -35,6 +39,8 @@ Content-Type: application/json
 
 ```json
 {
+  "result": "allow",
+  "reason": "valid_card_and_permission"
 }
 ```
 
@@ -47,9 +53,9 @@ Content-Type: application/json
 
 ## Ghi chú thay đổi hợp đồng
 
-| Nội dung | Trước | Sau | Người đồng ý |
-|---|---|---|---|
-| | | | |
+| Nội dung                                         | Trước    | Sau                           | Người đồng ý          |
+| ------------------------------------------------ | -------- | ----------------------------- | --------------------- |
+| Thêm field `reason` vào response evaluate-access | không có | string mô tả lý do allow/deny | team-core + team-gate |
 
 ## Xác nhận
 
