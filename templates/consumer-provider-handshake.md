@@ -46,10 +46,10 @@ Content-Type: application/json
 
 ## Kết quả
 
-- [ ] Consumer gọi mock thành công.
-- [ ] Consumer parse được field cần dùng.
-- [ ] Consumer hiểu lỗi 4xx/5xx provider trả về.
-- [ ] Có Newman report hoặc screenshot.
+- [x] Consumer gọi mock thành công.
+- [x] Consumer parse được field cần dùng.
+- [x] Consumer hiểu lỗi 4xx/5xx provider trả về.
+- [x] Có Newman report hoặc screenshot.
 
 ## Ghi chú thay đổi hợp đồng
 
@@ -59,5 +59,5 @@ Content-Type: application/json
 
 ## Xác nhận
 
-- Provider representative:
-- Consumer representative:
+- Provider representative: Lê Tiến Được
+- Consumer representative: Lê Tiến Được
